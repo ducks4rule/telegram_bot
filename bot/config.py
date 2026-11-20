@@ -24,7 +24,7 @@ DEFAULTS = {
         "lookahead_days": 7,
     },
     "gemini": {
-        "model": "gemini-2.0-flash",
+        "model": "gemini-2.5-flash-lite",
     },
     "logging": {
         "level": "INFO",

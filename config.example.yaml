@@ -7,7 +7,7 @@ schedule:
   timezone: "Europe/Berlin"
 
 gemini:
-  model: "gemini-2.0-flash"
+  model: "gemini-2.5-flash-lite"
 
 scraping:
   jina: true
@@ -20,8 +20,9 @@ categories:
   - name: music
     description: "Jazz, electronic, and experimental music."
 
+# sources:
+#   - name: "Example Cinema"
+#     url: "https://example-cinema.de/programm"
+#   - name: "Local Meetup"
+#     url: "https://meetup.com/some-group/events"
 sources: []
-  # - name: "Example Cinema"
-  #   url: "https://example-cinema.de/programm"
-  # - name: "Local Meetup"
-  #   url: "https://meetup.com/some-group/events"
