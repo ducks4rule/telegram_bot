@@ -77,6 +77,17 @@ def load_config(path: Path = CONFIG_PATH) -> dict:
     return config
 
 
+def save_config(config: dict, path: Path = CONFIG_PATH) -> None:
+    with open(path) as f:
+        raw = yaml.safe_load(f) or {}
+
+    raw["sources"] = config["sources"]
+    raw["categories"] = config["categories"]
+
+    with open(path, "w") as f:
+        yaml.dump(raw, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+
 def _validate(config: dict) -> None:
     if not config["telegram"]["bot_token"]:
         raise ValueError("TELEGRAM_BOT_TOKEN env var is required")

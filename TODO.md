@@ -2,10 +2,11 @@
 
 ## Now
 - [x] Add error handling — send error message to Telegram instead of silence
-- [ ] `/addsource <name> <url>` — add sources via bot
-- [ ] `/addcategory <name> <description>` — add categories via bot
-- [ ] `/removesource <name>` — remove a source via bot
-- [ ] `/removecategory <name>` — remove a category via bot
+- [x] `/addsource <name> <url> [aggregator]` — add sources via bot
+- [x] `/addcategory <name> <description>` — add categories via bot
+- [x] `/removesource <name>` — remove a source via bot
+- [x] `/removecategory <name>` — remove a category via bot
+- [x] `/categories` — list configured categories
 
 ## Soon
 - [ ] `/report month` — extended lookahead (30 days)
