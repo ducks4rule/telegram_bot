@@ -102,7 +102,10 @@ async def generate_report(config: dict, category_filter: str | None = None) -> s
 
 async def _send_report(send_fn, report: str) -> None:
     for chunk in _split_message(report):
-        await send_fn(chunk, parse_mode="Markdown")
+        try:
+            await send_fn(chunk, parse_mode="Markdown")
+        except Exception:
+            await send_fn(chunk)
 
 
 async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -117,7 +120,7 @@ async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await _send_report(update.message.reply_text, report)
     except Exception as e:
         logger.exception("Error generating report")
-        await update.message.reply_text(f"Error: {e}")
+        await update.message.reply_text(f"⚠️ Error: {e}")
 
 
 async def cmd_sources(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -294,7 +297,10 @@ async def scheduled_report(context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         report = await generate_report(config)
         for chunk in _split_message(report):
-            await context.bot.send_message(chat_id=chat_id, text=chunk, parse_mode="Markdown")
+            try:
+                await context.bot.send_message(chat_id=chat_id, text=chunk, parse_mode="Markdown")
+            except Exception:
+                await context.bot.send_message(chat_id=chat_id, text=chunk)
     except Exception as e:
         logger.exception("Error in scheduled report")
-        await context.bot.send_message(chat_id=chat_id, text=f"Scheduled report failed: {e}")
+        await context.bot.send_message(chat_id=chat_id, text=f"⚠️ Scheduled report failed: {e}")

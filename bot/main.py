@@ -21,6 +21,7 @@ def main():
     app = ApplicationBuilder().token(config["telegram"]["bot_token"]).build()
 
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("help", cmd_start))
     app.add_handler(CommandHandler("report", cmd_report))
     app.add_handler(CommandHandler("sources", cmd_sources))
     app.add_handler(CommandHandler("categories", cmd_categories))

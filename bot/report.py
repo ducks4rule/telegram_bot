@@ -13,6 +13,12 @@ CATEGORY_EMOJI = {
 }
 
 
+def _escape_md(text: str) -> str:
+    for char in ("*", "_", "`", "[", "]", "(", ")"):
+        text = text.replace(char, "")
+    return text
+
+
 def _get_emoji(category: str) -> str:
     cat_lower = category.lower()
     for key, emoji in CATEGORY_EMOJI.items():
@@ -45,11 +51,13 @@ def format_report(results: dict[str, list[dict]], config: dict) -> str:
             url = item.get("url")
             emoji = _get_emoji(cat)
 
-            title_text = f"[{title}]({url})" if url else title
+            safe_title = _escape_md(title)
+            safe_desc = _escape_md(desc)
+            title_text = f"[{safe_title}]({url})" if url else safe_title
             lines.append(f"  {emoji} *{title_text}*")
             lines.append(f"       {date}")
-            if desc:
-                lines.append(f"       {desc}")
+            if safe_desc:
+                lines.append(f"       {safe_desc}")
         lines.append("")
 
     return "\n".join(lines)
