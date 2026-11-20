@@ -69,6 +69,7 @@ def load_config(path: Path = CONFIG_PATH) -> dict:
     }
     config["llm"]["gemini_api_key"] = os.environ.get("GEMINI_API_KEY", "")
     config["llm"]["anthropic_api_key"] = os.environ.get("ANTHROPIC_API_KEY", "")
+    config["llm"]["anthropic_base_url"] = os.environ.get("ANTHROPIC_BASE_URL", "")
 
     model_str = config["llm"]["model"]
     if "/" in model_str:

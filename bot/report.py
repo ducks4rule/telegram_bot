@@ -25,17 +25,40 @@ def _get_emoji(category: str, categories: list) -> str:
     return "•"
 
 
+def _normalize_title(title: str) -> str:
+    t = title.lower().strip()
+    for char in "–—-:,.'\"!?()[]":
+        t = t.replace(char, " ")
+    words = sorted(set(t.split()))
+    return " ".join(words)
+
+
 def _deduplicate(items: list[dict]) -> list[dict]:
     seen = set()
     unique = []
     for item in items:
-        title = item.get("title", "").lower().strip()
-        date = item.get("date", "").strip()
-        key = (title, date)
-        if key not in seen:
-            seen.add(key)
-            unique.append(item)
+        title = _normalize_title(item.get("title", ""))
+        date = item.get("date", "").strip()[:10]
+        venue = item.get("venue", "").lower().split(",")[0].split("/")[0].strip()
+        key = (date, venue)
+        if key and key in seen and title:
+            already = [_normalize_title(u.get("title", "")) for u in unique
+                       if u.get("date", "").strip()[:10] == date]
+            if any(_titles_match(title, existing) for existing in already):
+                continue
+        seen.add(key)
+        unique.append(item)
     return unique
+
+
+def _titles_match(a: str, b: str) -> bool:
+    words_a = set(a.split())
+    words_b = set(b.split())
+    if not words_a or not words_b:
+        return False
+    overlap = words_a & words_b
+    smaller = min(len(words_a), len(words_b))
+    return len(overlap) >= max(1, smaller * 0.5)
 
 
 def _group_by_category(results: dict[str, list[dict]], sources: list) -> dict[str, list[dict]]:

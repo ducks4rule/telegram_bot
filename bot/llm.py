@@ -79,8 +79,12 @@ async def _call_anthropic(prompt: str, config: dict) -> str | None:
 
     llm = config["llm"]
     api_key = llm["anthropic_api_key"]
-    logger.debug("Anthropic key: %s...%s", api_key[:8], api_key[-4:])
-    client = anthropic.AsyncAnthropic(api_key=api_key)
+    base_url = llm.get("anthropic_base_url")
+
+    kwargs = {"api_key": api_key}
+    if base_url:
+        kwargs["base_url"] = base_url
+    client = anthropic.AsyncAnthropic(**kwargs)
     response = await client.messages.create(
         model=llm["model"],
         max_tokens=4096,
