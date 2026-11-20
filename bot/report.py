@@ -1,5 +1,25 @@
 from bot.schedule import next_week_range
 
+CATEGORY_EMOJI = {
+    "film": "🎬",
+    "tech": "💻",
+    "music": "🎵",
+    "culture": "🎭",
+    "party": "🎉",
+    "art": "🖼",
+    "theater": "🎪",
+    "food": "🍽",
+    "sport": "⚽",
+}
+
+
+def _get_emoji(category: str) -> str:
+    cat_lower = category.lower()
+    for key, emoji in CATEGORY_EMOJI.items():
+        if key in cat_lower:
+            return emoji
+    return "📌"
+
 
 def format_report(results: dict[str, list[dict]], config: dict) -> str:
     schedule = config["schedule"]
@@ -22,10 +42,14 @@ def format_report(results: dict[str, list[dict]], config: dict) -> str:
             title = item.get("title", "Untitled")
             desc = item.get("description", "")
             cat = item.get("category", "")
-            cat_tag = f" [{cat}]" if cat else ""
-            lines.append(f"  • {title}{cat_tag}")
+            url = item.get("url")
+            emoji = _get_emoji(cat)
+
+            title_text = f"[{title}]({url})" if url else title
+            lines.append(f"  {emoji} *{title_text}*")
+            lines.append(f"       {date}")
             if desc:
-                lines.append(f"    {date} — {desc}")
+                lines.append(f"       {desc}")
         lines.append("")
 
     return "\n".join(lines)

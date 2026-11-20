@@ -19,8 +19,20 @@ def _build_category_text(categories: list) -> str:
 
 
 def build_prompt(source_name: str, text: str, categories: list,
-                 start: str, end: str) -> str:
+                 start: str, end: str, extract_urls: bool = False) -> str:
     cat_text = _build_category_text(categories)
+
+    fields = [
+        '- "title": short event title',
+        '- "date": date string (ISO format if possible, or as listed)',
+        '- "category": which category it matches',
+        '- "description": one-sentence summary',
+    ]
+    if extract_urls:
+        fields.append('- "url": direct link to the event page if available, otherwise null')
+
+    fields_text = "\n".join(fields)
+
     return f"""You are analyzing content from "{source_name}" to find events or items happening between {start} and {end}.
 
 Categories of interest:
@@ -33,10 +45,7 @@ Extract any events, screenings, meetups, concerts, or other items that:
 Only include items that genuinely fit the category descriptions. Be selective — quality over quantity.
 
 Return a JSON array of objects with these fields:
-- "title": short event title
-- "date": date string (ISO format if possible, or as listed)
-- "category": which category it matches
-- "description": one-sentence summary
+{fields_text}
 
 If nothing matches, return an empty array: []
 Return ONLY valid JSON, no markdown fences or other text.
@@ -46,16 +55,24 @@ Content:
 
 
 async def analyze_source(source_name: str, text: str, categories: list,
-                         config: dict) -> list[dict]:
+                         config: dict, extract_urls: bool = False) -> list[dict]:
     schedule = config["schedule"]
     start, end = next_week_range(schedule["timezone"], schedule["lookahead_days"])
     prompt = build_prompt(source_name, text, categories,
-                          start.isoformat(), end.isoformat())
+                          start.isoformat(), end.isoformat(),
+                          extract_urls=extract_urls)
 
     client = genai.Client(api_key=config["gemini"]["api_key"])
     model = config["gemini"]["model"]
 
     response = await client.aio.models.generate_content(model=model, contents=prompt)
+
+    usage = response.usage_metadata
+    if usage:
+        logger.info(
+            "LLM usage for %s: %d input tokens, %d output tokens",
+            source_name, usage.prompt_token_count, usage.candidates_token_count,
+        )
 
     try:
         raw = response.text.strip()

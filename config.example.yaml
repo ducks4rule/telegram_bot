@@ -7,7 +7,7 @@ schedule:
   timezone: "Europe/Berlin"
 
 gemini:
-  model: "gemini-2.5-flash-lite"
+  model: "gemini-3.5-flash-lite"
 
 scraping:
   jina: true
@@ -23,6 +23,8 @@ categories:
 # sources:
 #   - name: "Example Cinema"
 #     url: "https://example-cinema.de/programm"
-#   - name: "Local Meetup"
-#     url: "https://meetup.com/some-group/events"
+#     type: "aggregator"  # extract per-event links
+#   - name: "Some Party"
+#     url: "https://someparty.at"
+#     # type defaults to "single" — links to source URL
 sources: []

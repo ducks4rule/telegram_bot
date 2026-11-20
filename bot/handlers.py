@@ -40,9 +40,14 @@ async def _process_source(source: dict, categories: list, config: dict) -> tuple
     url = source["url"]
     logger.info("Checking %s (%s)", name, url)
 
+    source_type = source.get("type", "single")
     text = await fetch_and_extract(url, config["scraping"])
     if text:
-        items = await analyze_source(name, text, categories, config)
+        extract_urls = source_type == "aggregator"
+        items = await analyze_source(name, text, categories, config, extract_urls=extract_urls)
+        for item in items:
+            if not extract_urls:
+                item["url"] = url
         return name, items
 
     logger.warning("Skipping %s: no content extracted", name)

@@ -9,7 +9,7 @@ CONSTANTS = {
     "http_timeout": 30,
     "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0",
     "trafilatura_options": {
-        "include_links": False,
+        "include_links": True,
         "include_tables": True,
     },
     "telegram_max_message_length": 4096,
@@ -24,7 +24,7 @@ DEFAULTS = {
         "lookahead_days": 7,
     },
     "gemini": {
-        "model": "gemini-2.5-flash-lite",
+        "model": "gemini-3.5-flash-lite",
     },
     "logging": {
         "level": "INFO",
