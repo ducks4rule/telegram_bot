@@ -78,8 +78,7 @@ To update:
 
 ```sh
 cd telegram_bot
-git pull
-podman-compose up -d --build
+git pull && podman-compose down && podman-compose up -d --build
 ```
 
 ## Bot Commands

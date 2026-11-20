@@ -24,8 +24,8 @@ DEFAULTS = {
         "lookahead_days": 7,
         "monthly_lookahead_days": 30,
     },
-    "gemini": {
-        "model": "gemini-3.5-flash-lite",
+    "llm": {
+        "model": "anthropic/claude-sonnet-4-6",
     },
     "logging": {
         "level": "INFO",
@@ -67,7 +67,16 @@ def load_config(path: Path = CONFIG_PATH) -> dict:
         "bot_token": os.environ.get("TELEGRAM_BOT_TOKEN", ""),
         "chat_id": int(os.environ.get("TELEGRAM_CHAT_ID", "0")),
     }
-    config["gemini"]["api_key"] = os.environ.get("GEMINI_API_KEY", "")
+    config["llm"]["gemini_api_key"] = os.environ.get("GEMINI_API_KEY", "")
+    config["llm"]["anthropic_api_key"] = os.environ.get("ANTHROPIC_API_KEY", "")
+
+    model_str = config["llm"]["model"]
+    if "/" in model_str:
+        provider, model = model_str.split("/", 1)
+        config["llm"]["provider"] = provider
+        config["llm"]["model"] = model
+    else:
+        config["llm"]["provider"] = "gemini"
 
     _validate(config)
 
@@ -95,8 +104,12 @@ def _validate(config: dict) -> None:
         raise ValueError("TELEGRAM_BOT_TOKEN env var is required")
     if not config["telegram"]["chat_id"]:
         raise ValueError("TELEGRAM_CHAT_ID env var is required")
-    if not config["gemini"]["api_key"]:
-        raise ValueError("GEMINI_API_KEY env var is required")
+
+    provider = config["llm"].get("provider", "gemini")
+    if provider == "gemini" and not config["llm"]["gemini_api_key"]:
+        raise ValueError("GEMINI_API_KEY env var is required when provider is gemini")
+    if provider == "anthropic" and not config["llm"]["anthropic_api_key"]:
+        raise ValueError("ANTHROPIC_API_KEY env var is required when provider is anthropic")
 
     time_str = config["schedule"]["time"]
     parts = time_str.split(":")

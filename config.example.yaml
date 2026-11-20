@@ -6,8 +6,12 @@ schedule:
   time: "08:00"
   timezone: "Europe/Berlin"
 
-gemini:
-  model: "gemini-3.5-flash-lite"
+# format: provider/model — comment/uncomment to switch
+llm:
+  model: "anthropic/claude-sonnet-4-6"
+  # model: "anthropic/claude-haiku-4-5"
+  # model: "gemini/gemini-3.8-flash"
+  # model: "gemini/gemini-3.5-flash-lite"
 
 scraping:
   jina: true
