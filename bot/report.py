@@ -14,6 +14,8 @@ def _escape_md(text: str) -> str:
 
 
 def _get_emoji(category: str, categories: list) -> str:
+    if not category:
+        return "•"
     cat_lower = category.lower()
     for c in categories:
         if isinstance(c, dict) and c["name"].lower() == cat_lower:
@@ -47,7 +49,7 @@ def _group_by_category(results: dict[str, list[dict]], sources: list) -> dict[st
     by_cat = {}
     for source_name, items in sorted_sources:
         for item in items:
-            cat = item.get("category", "other")
+            cat = item.get("category") or "other"
             item["_source"] = source_name
             by_cat.setdefault(cat, []).append(item)
 
