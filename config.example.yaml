@@ -1,0 +1,27 @@
+logging:
+  level: "INFO"
+
+schedule:
+  day: monday
+  time: "08:00"
+  timezone: "Europe/Berlin"
+
+gemini:
+  model: "gemini-2.0-flash"
+
+scraping:
+  jina: true
+
+categories:
+  - name: film
+    description: "Arthouse, indie, and classic cinema screenings. Not mainstream blockbusters."
+  - name: tech
+    description: "Software meetups, hackathons, talks about programming, open source, AI."
+  - name: music
+    description: "Jazz, electronic, and experimental music."
+
+sources: []
+  # - name: "Example Cinema"
+  #   url: "https://example-cinema.de/programm"
+  # - name: "Local Meetup"
+  #   url: "https://meetup.com/some-group/events"
