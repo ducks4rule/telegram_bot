@@ -55,6 +55,7 @@ def _group_by_category(results: dict[str, list[dict]], sources: list) -> dict[st
 
     for cat in by_cat:
         by_cat[cat] = _deduplicate(by_cat[cat])
+        by_cat[cat].sort(key=lambda item: item.get("date", "9999"))
 
     return by_cat
 
@@ -89,21 +90,30 @@ def format_report(results: dict[str, list[dict]], config: dict, scheduled: bool 
         emoji = _get_emoji(cat, categories)
         lines.append(f"{emoji} *{_escape_md(cat)}*\n")
 
+        grouped = {}
         for item in items:
-            item_date = item.get("date", "?")
-            item_title = item.get("title", "Untitled")
-            item_desc = item.get("description", "")
-            item_url = item.get("url")
-            item_source = item.get("_source", "")
+            date = item.get("date", "?")
+            venue = item.get("venue", "")
+            key = (date, venue)
+            grouped.setdefault(key, []).append(item)
 
-            safe_title = _escape_md(item_title)
-            title_text = f"[{safe_title}]({item_url})" if item_url else safe_title
-            source_tag = f" — {_escape_md(item_source)}" if item_source else ""
+        for (date, venue), group in grouped.items():
+            venue_tag = f" @ {_escape_md(venue)}" if venue else ""
+            lines.append(f"  *{date}{venue_tag}*")
 
-            lines.append(f"  *{title_text}*")
-            lines.append(f"    {item_date}{source_tag}")
-            if item_desc:
-                lines.append(f"    {_escape_md(item_desc)}")
+            for item in group:
+                item_title = item.get("title", "Untitled")
+                item_desc = item.get("description", "")
+                item_url = item.get("url")
+                item_source = item.get("_source", "")
+
+                safe_title = _escape_md(item_title)
+                title_text = f"[{safe_title}]({item_url})" if item_url else safe_title
+                source_tag = f" — {_escape_md(item_source)}" if item_source else ""
+
+                lines.append(f"    {title_text}{source_tag}")
+                if item_desc:
+                    lines.append(f"      {_escape_md(item_desc)}")
             lines.append("")
 
     return "\n".join(lines)

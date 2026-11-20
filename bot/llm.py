@@ -26,6 +26,7 @@ def build_prompt(source_name: str, text: str, categories: list,
         '- "title": short event title',
         '- "date": date string (ISO format if possible, or as listed)',
         '- "category": which category it matches',
+        '- "venue": venue name if available',
         '- "description": one-sentence summary',
     ]
     if extract_urls:
