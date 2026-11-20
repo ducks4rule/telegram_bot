@@ -115,7 +115,13 @@ async def generate_report(config: dict, category_filter: str | None = None,
     if not sources:
         return "No sources configured. Add some via /addsource."
 
-    tasks = [_process_source(source, categories, config) for source in sources]
+    semaphore = asyncio.Semaphore(config["scraping"]["max_concurrent_requests"])
+
+    async def _throttled(source):
+        async with semaphore:
+            return await _process_source(source, categories, config)
+
+    tasks = [_throttled(source) for source in sources]
     pairs = await asyncio.gather(*tasks)
     results = {name: items for name, items in pairs}
 
@@ -136,6 +142,7 @@ async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE, config:
     if args:
         category_filter = args[0]
 
+    logger.info("Report requested: category=%s, lookahead=%s", category_filter, lookahead_days)
     await update.message.reply_text("Checking sources, one moment...")
     try:
         report = await generate_report(config, category_filter=category_filter,

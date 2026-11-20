@@ -34,6 +34,7 @@ DEFAULTS = {
         "jina": True,
         "jina_prefix": "https://r.jina.ai/",
         "max_content_length": 50000,
+        "max_concurrent_requests": 5,
     },
     "categories": [],
     "sources": [],
