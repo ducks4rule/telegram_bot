@@ -89,8 +89,12 @@ async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     category_filter = context.args[0] if context.args else None
     await update.message.reply_text("Checking sources, one moment...")
-    report = await generate_report(config, category_filter=category_filter)
-    await _send_report(update.message.reply_text, report)
+    try:
+        report = await generate_report(config, category_filter=category_filter)
+        await _send_report(update.message.reply_text, report)
+    except Exception as e:
+        logger.exception("Error generating report")
+        await update.message.reply_text(f"Error: {e}")
 
 
 async def cmd_sources(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -125,6 +129,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def scheduled_report(context: ContextTypes.DEFAULT_TYPE) -> None:
     config = load_config()
     chat_id = config["telegram"]["chat_id"]
-    report = await generate_report(config)
-    for chunk in _split_message(report):
-        await context.bot.send_message(chat_id=chat_id, text=chunk, parse_mode="Markdown")
+    try:
+        report = await generate_report(config)
+        for chunk in _split_message(report):
+            await context.bot.send_message(chat_id=chat_id, text=chunk, parse_mode="Markdown")
+    except Exception as e:
+        logger.exception("Error in scheduled report")
+        await context.bot.send_message(chat_id=chat_id, text=f"Scheduled report failed: {e}")
