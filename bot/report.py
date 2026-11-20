@@ -1,16 +1,10 @@
 from bot.schedule import next_week_range
 
-CATEGORY_EMOJI = {
-    "film": "🎬",
-    "tech": "💻",
-    "music": "🎵",
-    "culture": "🎭",
-    "party": "🎉",
-    "art": "🖼",
-    "theater": "🎪",
-    "food": "🍽",
-    "sport": "⚽",
-}
+EMOJIS = [
+    "🔥", "🪢", "⛓", "🤘", "🎧", "🎶", "🎬", "💻",
+    "🎵", "🎭", "🎉", "🖼", "⚽", "📚", "🍽", "🌍",
+    "💡", "🎪", "🧪", "🏠", "✨", "🌙", "🔮", "🎲",
+]
 
 
 def _escape_md(text: str) -> str:
@@ -19,45 +13,76 @@ def _escape_md(text: str) -> str:
     return text
 
 
-def _get_emoji(category: str) -> str:
+def _get_emoji(category: str, categories: list) -> str:
     cat_lower = category.lower()
-    for key, emoji in CATEGORY_EMOJI.items():
-        if key in cat_lower:
-            return emoji
-    return "📌"
+    for c in categories:
+        if isinstance(c, dict) and c["name"].lower() == cat_lower:
+            idx = c.get("emoji")
+            if idx is not None and 0 <= idx < len(EMOJIS):
+                return EMOJIS[idx]
+    return "•"
+
+
+def _deduplicate(items: list[dict]) -> list[dict]:
+    seen = set()
+    unique = []
+    for item in items:
+        title = item.get("title", "").lower().strip()
+        date = item.get("date", "").strip()
+        key = (title, date)
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+    return unique
+
+
+def _group_by_category(results: dict[str, list[dict]]) -> dict[str, list[dict]]:
+    by_cat = {}
+    for source_name, items in results.items():
+        for item in items:
+            cat = item.get("category", "other")
+            item["_source"] = source_name
+            by_cat.setdefault(cat, []).append(item)
+
+    for cat in by_cat:
+        by_cat[cat] = _deduplicate(by_cat[cat])
+
+    return by_cat
 
 
 def format_report(results: dict[str, list[dict]], config: dict) -> str:
     schedule = config["schedule"]
+    categories = config["categories"]
     start, end = next_week_range(schedule["timezone"], schedule["lookahead_days"])
 
     lines = ["*Weekly Report*"]
     lines.append(f"_{start.strftime('%d.%m.')} — {end.strftime('%d.%m.%Y')}_\n")
 
-    total_items = sum(len(items) for items in results.values())
-    if total_items == 0:
+    by_cat = _group_by_category(results)
+
+    total = sum(len(items) for items in by_cat.values())
+    if total == 0:
         lines.append("Nothing interesting found for next week.")
         return "\n".join(lines)
 
-    for source_name, items in results.items():
-        if not items:
-            continue
-        lines.append(f"*{source_name}*")
+    for cat, items in by_cat.items():
+        emoji = _get_emoji(cat, categories)
+        lines.append(f"{emoji} *{_escape_md(cat)}*")
         for item in items:
             date = item.get("date", "?")
             title = item.get("title", "Untitled")
             desc = item.get("description", "")
-            cat = item.get("category", "")
             url = item.get("url")
-            emoji = _get_emoji(cat)
+            source = item.get("_source", "")
 
             safe_title = _escape_md(title)
             safe_desc = _escape_md(desc)
             title_text = f"[{safe_title}]({url})" if url else safe_title
-            lines.append(f"  {emoji} *{title_text}*")
-            lines.append(f"       {date}")
+            source_tag = f" — {_escape_md(source)}" if source else ""
+            lines.append(f"  *{title_text}*")
+            lines.append(f"    {date}{source_tag}")
             if safe_desc:
-                lines.append(f"       {safe_desc}")
+                lines.append(f"    {safe_desc}")
         lines.append("")
 
     return "\n".join(lines)

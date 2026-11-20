@@ -42,7 +42,11 @@ Extract any events, screenings, meetups, concerts, or other items that:
 1. Fall within the date range {start} to {end}
 2. Match at least one of the categories above based on their description
 
-Only include items that genuinely fit the category descriptions. Be selective — quality over quantity.
+STRICT RULES:
+- Only include items that genuinely fit the category descriptions. Be very selective — quality over quantity.
+- EXCLUDE any events that are restricted to FLINTA*, women-only, lesbian-only, or any gender-restricted audience.
+- EXCLUDE workshops, courses, or seminars unless they clearly fit a category description.
+- If unsure whether something fits, leave it out.
 
 Return a JSON array of objects with these fields:
 {fields_text}
