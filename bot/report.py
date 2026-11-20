@@ -36,9 +36,17 @@ def _deduplicate(items: list[dict]) -> list[dict]:
     return unique
 
 
-def _group_by_category(results: dict[str, list[dict]]) -> dict[str, list[dict]]:
+def _group_by_category(results: dict[str, list[dict]], sources: list) -> dict[str, list[dict]]:
+    source_types = {s["name"]: s.get("type", "single") for s in sources}
+
+    # single sources first so dedup keeps their entries over aggregator duplicates
+    sorted_sources = sorted(
+        results.items(),
+        key=lambda x: 0 if source_types.get(x[0]) == "single" else 1,
+    )
+
     by_cat = {}
-    for source_name, items in results.items():
+    for source_name, items in sorted_sources:
         for item in items:
             cat = item.get("category", "other")
             item["_source"] = source_name
@@ -55,10 +63,18 @@ def format_report(results: dict[str, list[dict]], config: dict) -> str:
     categories = config["categories"]
     start, end = next_week_range(schedule["timezone"], schedule["lookahead_days"])
 
-    lines = ["*Weekly Report*"]
+    days = schedule["lookahead_days"]
+    if days <= 7:
+        title = "Weekly Report"
+    elif days <= 14:
+        title = "2-Week Report"
+    else:
+        title = "Monthly Report"
+
+    lines = [f"*{title}*"]
     lines.append(f"_{start.strftime('%d.%m.')} — {end.strftime('%d.%m.%Y')}_\n")
 
-    by_cat = _group_by_category(results)
+    by_cat = _group_by_category(results, config.get("sources", []))
 
     total = sum(len(items) for items in by_cat.values())
     if total == 0:

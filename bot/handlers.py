@@ -77,9 +77,13 @@ async def _process_source(source: dict, categories: list, config: dict) -> tuple
     return name, items
 
 
-async def generate_report(config: dict, category_filter: str | None = None) -> str:
+async def generate_report(config: dict, category_filter: str | None = None,
+                          lookahead_days: int | None = None) -> str:
     sources = config["sources"]
     categories = config["categories"]
+
+    if lookahead_days:
+        config = {**config, "schedule": {**config["schedule"], "lookahead_days": lookahead_days}}
 
     if not categories:
         return "No categories configured. Add some to config.yaml."
@@ -113,10 +117,20 @@ async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not is_authorized(update.effective_chat.id, config):
         return
 
-    category_filter = context.args[0] if context.args else None
+    args = list(context.args) if context.args else []
+    category_filter = None
+    lookahead_days = None
+
+    if "month" in args:
+        lookahead_days = 30
+        args.remove("month")
+    if args:
+        category_filter = args[0]
+
     await update.message.reply_text("Checking sources, one moment...")
     try:
-        report = await generate_report(config, category_filter=category_filter)
+        report = await generate_report(config, category_filter=category_filter,
+                                       lookahead_days=lookahead_days)
         await _send_report(update.message.reply_text, report)
     except Exception as e:
         logger.exception("Error generating report")
