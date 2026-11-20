@@ -8,7 +8,7 @@ EMOJIS = [
 
 
 def _escape_md(text: str) -> str:
-    for char in ("*", "_", "`", "[", "]", "(", ")"):
+    for char in ("*", "_", "`", "[", "]"):
         text = text.replace(char, "")
     return text
 
@@ -39,7 +39,6 @@ def _deduplicate(items: list[dict]) -> list[dict]:
 def _group_by_category(results: dict[str, list[dict]], sources: list) -> dict[str, list[dict]]:
     source_types = {s["name"]: s.get("type", "single") for s in sources}
 
-    # single sources first so dedup keeps their entries over aggregator duplicates
     sorted_sources = sorted(
         results.items(),
         key=lambda x: 0 if source_types.get(x[0]) == "single" else 1,
@@ -58,47 +57,51 @@ def _group_by_category(results: dict[str, list[dict]], sources: list) -> dict[st
     return by_cat
 
 
-def format_report(results: dict[str, list[dict]], config: dict) -> str:
+def _period_label(days: int) -> str:
+    if days <= 7:
+        return "the next week"
+    if days <= 14:
+        return "the next 2 weeks"
+    return "the next month"
+
+
+def format_report(results: dict[str, list[dict]], config: dict, scheduled: bool = False) -> str:
     schedule = config["schedule"]
     categories = config["categories"]
     start, end = next_week_range(schedule["timezone"], schedule["lookahead_days"])
 
-    days = schedule["lookahead_days"]
-    if days <= 7:
-        title = "Weekly Report"
-    elif days <= 14:
-        title = "2-Week Report"
-    else:
-        title = "Monthly Report"
+    period = _period_label(schedule["lookahead_days"])
+    heading = "Weekly Report" if scheduled else f"Report for {period}"
 
-    lines = [f"*{title}*"]
+    lines = [f"*{heading}*"]
     lines.append(f"_{start.strftime('%d.%m.')} — {end.strftime('%d.%m.%Y')}_\n")
 
     by_cat = _group_by_category(results, config.get("sources", []))
 
     total = sum(len(items) for items in by_cat.values())
     if total == 0:
-        lines.append("Nothing interesting found for next week.")
+        lines.append(f"Nothing interesting found for {period}.")
         return "\n".join(lines)
 
     for cat, items in by_cat.items():
         emoji = _get_emoji(cat, categories)
-        lines.append(f"{emoji} *{_escape_md(cat)}*")
-        for item in items:
-            date = item.get("date", "?")
-            title = item.get("title", "Untitled")
-            desc = item.get("description", "")
-            url = item.get("url")
-            source = item.get("_source", "")
+        lines.append(f"{emoji} *{_escape_md(cat)}*\n")
 
-            safe_title = _escape_md(title)
-            safe_desc = _escape_md(desc)
-            title_text = f"[{safe_title}]({url})" if url else safe_title
-            source_tag = f" — {_escape_md(source)}" if source else ""
+        for item in items:
+            item_date = item.get("date", "?")
+            item_title = item.get("title", "Untitled")
+            item_desc = item.get("description", "")
+            item_url = item.get("url")
+            item_source = item.get("_source", "")
+
+            safe_title = _escape_md(item_title)
+            title_text = f"[{safe_title}]({item_url})" if item_url else safe_title
+            source_tag = f" — {_escape_md(item_source)}" if item_source else ""
+
             lines.append(f"  *{title_text}*")
-            lines.append(f"    {date}{source_tag}")
-            if safe_desc:
-                lines.append(f"    {safe_desc}")
-        lines.append("")
+            lines.append(f"    {item_date}{source_tag}")
+            if item_desc:
+                lines.append(f"    {_escape_md(item_desc)}")
+            lines.append("")
 
     return "\n".join(lines)

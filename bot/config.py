@@ -22,6 +22,7 @@ DEFAULTS = {
         "time": "08:00",
         "timezone": "Europe/Berlin",
         "lookahead_days": 7,
+        "monthly_lookahead_days": 30,
     },
     "gemini": {
         "model": "gemini-3.5-flash-lite",

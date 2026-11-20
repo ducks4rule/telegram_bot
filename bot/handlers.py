@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import logging
 
 from telegram import Update
@@ -14,8 +15,14 @@ logger = logging.getLogger(__name__)
 TELEGRAM_MAX_LENGTH = CONSTANTS["telegram_max_message_length"]
 
 
-def is_authorized(chat_id: int, config: dict) -> bool:
-    return chat_id == config["telegram"]["chat_id"]
+def _authorized(handler):
+    @functools.wraps(handler)
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        config = load_config()
+        if update.effective_chat.id != config["telegram"]["chat_id"]:
+            return
+        await handler(update, context, config)
+    return wrapper
 
 
 def _split_message(text: str) -> list[str]:
@@ -33,6 +40,14 @@ def _split_message(text: str) -> list[str]:
         messages.append(text[:split_at])
         text = text[split_at:].lstrip("\n")
     return messages
+
+
+async def _send_message(send_fn, text: str) -> None:
+    for chunk in _split_message(text):
+        try:
+            await send_fn(chunk, parse_mode="Markdown")
+        except Exception:
+            await send_fn(chunk)
 
 
 def _expand_urls(source: dict) -> list[str]:
@@ -71,22 +86,25 @@ async def _process_source(source: dict, categories: list, config: dict) -> tuple
 
     combined = "\n\n".join(texts)
     items = await analyze_source(name, combined, categories, config, extract_urls=extract_urls)
-    for item in items:
-        if not extract_urls:
+
+    if not extract_urls:
+        for item in items:
             item["url"] = urls[0]
+
     return name, items
 
 
 async def generate_report(config: dict, category_filter: str | None = None,
-                          lookahead_days: int | None = None) -> str:
+                          lookahead_days: int | None = None,
+                          scheduled: bool = False) -> str:
     sources = config["sources"]
     categories = config["categories"]
 
-    if lookahead_days:
+    if lookahead_days is not None:
         config = {**config, "schedule": {**config["schedule"], "lookahead_days": lookahead_days}}
 
     if not categories:
-        return "No categories configured. Add some to config.yaml."
+        return "No categories configured. Add some via /addcategory."
 
     if category_filter:
         categories = [c for c in categories
@@ -95,34 +113,25 @@ async def generate_report(config: dict, category_filter: str | None = None,
             return format_report({}, config)
 
     if not sources:
-        return "No sources configured. Add some to config.yaml."
+        return "No sources configured. Add some via /addsource."
 
     tasks = [_process_source(source, categories, config) for source in sources]
     pairs = await asyncio.gather(*tasks)
     results = {name: items for name, items in pairs}
 
-    return format_report(results, config)
+    return format_report(results, config, scheduled=scheduled)
 
 
-async def _send_report(send_fn, report: str) -> None:
-    for chunk in _split_message(report):
-        try:
-            await send_fn(chunk, parse_mode="Markdown")
-        except Exception:
-            await send_fn(chunk)
+# --- Command handlers ---
 
-
-async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    config = load_config()
-    if not is_authorized(update.effective_chat.id, config):
-        return
-
+@_authorized
+async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
     args = list(context.args) if context.args else []
     category_filter = None
     lookahead_days = None
 
     if "month" in args:
-        lookahead_days = 30
+        lookahead_days = config["schedule"]["monthly_lookahead_days"]
         args.remove("month")
     if args:
         category_filter = args[0]
@@ -131,17 +140,14 @@ async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     try:
         report = await generate_report(config, category_filter=category_filter,
                                        lookahead_days=lookahead_days)
-        await _send_report(update.message.reply_text, report)
+        await _send_message(update.message.reply_text, report)
     except Exception as e:
         logger.exception("Error generating report")
         await update.message.reply_text(f"⚠️ Error: {e}")
 
 
-async def cmd_sources(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    config = load_config()
-    if not is_authorized(update.effective_chat.id, config):
-        return
-
+@_authorized
+async def cmd_sources(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
     sources = config["sources"]
     if not sources:
         await update.message.reply_text("No sources configured.")
@@ -149,20 +155,40 @@ async def cmd_sources(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     lines = ["*Configured sources:*"]
     for s in sources:
-        lines.append(f"  • {s['name']}: {s['url']}")
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+        source_type = s.get("type", "single")
+        pages = s.get("pages", 1)
+        extra = f" [{source_type}]" if source_type != "single" else ""
+        if pages > 1:
+            extra += f" ({pages} pages)"
+        lines.append(f"  • {s['name']}: {s.get('url', ', '.join(s.get('urls', [])))}{extra}")
+    await _send_message(update.message.reply_text, "\n".join(lines))
 
 
-async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    config = load_config()
-    if not is_authorized(update.effective_chat.id, config):
+@_authorized
+async def cmd_categories(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
+    categories = config["categories"]
+    if not categories:
+        await update.message.reply_text("No categories configured.")
         return
 
+    lines = ["*Configured categories:*"]
+    for c in categories:
+        if isinstance(c, dict):
+            lines.append(f"  • *{c['name']}*: {c.get('description', '')}")
+        else:
+            lines.append(f"  • {c}")
+    await _send_message(update.message.reply_text, "\n".join(lines))
+
+
+@_authorized
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
     await update.message.reply_text(
         "Bot is running.\n\n"
         "*Reports*\n"
-        "/report — generate a report now\n"
-        "/report <category> — filter by category\n\n"
+        "/report — report for the next week\n"
+        "/report month — report for the next month\n"
+        "/report <category> — filter by category\n"
+        "/report <category> month — combine both\n\n"
         "*Config*\n"
         "/sources — list sources\n"
         "/categories — list categories\n"
@@ -174,16 +200,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
-async def cmd_addsource(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    config = load_config()
-    if not is_authorized(update.effective_chat.id, config):
-        return
-
+@_authorized
+async def cmd_addsource(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
     args = context.args
     if not args or len(args) < 2:
         await update.message.reply_text(
             "Usage: /addsource <name> <url> [aggregator]\n"
-            "Example: /addsource \"Local Cinema\" https://cinema.at/programm aggregator"
+            "Example: /addsource Local Cinema https://cinema.at/programm aggregator"
         )
         return
 
@@ -214,11 +237,8 @@ async def cmd_addsource(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_text(f"Added: {name} ({url}) [{source_type}]")
 
 
-async def cmd_addcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    config = load_config()
-    if not is_authorized(update.effective_chat.id, config):
-        return
-
+@_authorized
+async def cmd_addcategory(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
     if not context.args:
         await update.message.reply_text(
             "Usage: /addcategory <name> <description>\n"
@@ -241,11 +261,8 @@ async def cmd_addcategory(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.message.reply_text(f"Added category: {name}" + (f"\n{description}" if description else ""))
 
 
-async def cmd_removesource(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    config = load_config()
-    if not is_authorized(update.effective_chat.id, config):
-        return
-
+@_authorized
+async def cmd_removesource(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
     if not context.args:
         await update.message.reply_text("Usage: /removesource <name>")
         return
@@ -262,11 +279,8 @@ async def cmd_removesource(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await update.message.reply_text(f"Removed source: {name}")
 
 
-async def cmd_removecategory(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    config = load_config()
-    if not is_authorized(update.effective_chat.id, config):
-        return
-
+@_authorized
+async def cmd_removecategory(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
     if not context.args:
         await update.message.reply_text("Usage: /removecategory <name>")
         return
@@ -286,35 +300,15 @@ async def cmd_removecategory(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.message.reply_text(f"Removed category: {name}")
 
 
-async def cmd_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    config = load_config()
-    if not is_authorized(update.effective_chat.id, config):
-        return
-
-    categories = config["categories"]
-    if not categories:
-        await update.message.reply_text("No categories configured.")
-        return
-
-    lines = ["*Configured categories:*"]
-    for c in categories:
-        if isinstance(c, dict):
-            lines.append(f"  • *{c['name']}*: {c.get('description', '')}")
-        else:
-            lines.append(f"  • {c}")
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
-
+# --- Scheduled handler (no decorator, no update object) ---
 
 async def scheduled_report(context: ContextTypes.DEFAULT_TYPE) -> None:
     config = load_config()
     chat_id = config["telegram"]["chat_id"]
     try:
-        report = await generate_report(config)
-        for chunk in _split_message(report):
-            try:
-                await context.bot.send_message(chat_id=chat_id, text=chunk, parse_mode="Markdown")
-            except Exception:
-                await context.bot.send_message(chat_id=chat_id, text=chunk)
+        report = await generate_report(config, scheduled=True)
+        send_fn = lambda text, **kwargs: context.bot.send_message(chat_id=chat_id, text=text, **kwargs)
+        await _send_message(send_fn, report)
     except Exception as e:
         logger.exception("Error in scheduled report")
         await context.bot.send_message(chat_id=chat_id, text=f"⚠️ Scheduled report failed: {e}")

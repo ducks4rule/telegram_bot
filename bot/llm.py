@@ -78,6 +78,10 @@ async def analyze_source(source_name: str, text: str, categories: list,
             source_name, usage.prompt_token_count, usage.candidates_token_count,
         )
 
+    if not response.text:
+        logger.warning("Empty LLM response for %s", source_name)
+        return []
+
     try:
         raw = response.text.strip()
         if raw.startswith("```"):
