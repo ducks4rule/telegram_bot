@@ -36,6 +36,8 @@ DEFAULTS = {
         "max_content_length": 50000,
         "max_concurrent_requests": 5,
     },
+    "category_groups": {},
+    "default_group": "default",
     "categories": [],
     "sources": [],
 }

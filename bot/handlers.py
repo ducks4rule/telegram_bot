@@ -94,26 +94,64 @@ async def _process_source(source: dict, categories: list, config: dict) -> tuple
     return name, items
 
 
+def _get_category_name(c) -> str:
+    return c["name"] if isinstance(c, dict) else c
+
+
+def _filter_categories(categories: list, category_filter: str | None,
+                       use_defaults: bool, groups: dict, default_group_name: str) -> list:
+    if category_filter:
+        if category_filter in groups:
+            group_names = set(groups[category_filter])
+            return [c for c in categories if _get_category_name(c) in group_names]
+        return [c for c in categories if _get_category_name(c) == category_filter]
+
+    if use_defaults:
+        default_group = groups.get(default_group_name, [])
+        if default_group:
+            group_names = set(default_group)
+            return [c for c in categories if _get_category_name(c) in group_names]
+        return categories
+
+    return categories
+
+
+def _filter_sources(sources: list, active_cat_names: set) -> list:
+    filtered = []
+    for s in sources:
+        source_cats = s.get("categories")
+        if source_cats:
+            if active_cat_names & set(source_cats):
+                filtered.append(s)
+        else:
+            filtered.append(s)
+    return filtered
+
+
 async def generate_report(config: dict, category_filter: str | None = None,
                           lookahead_days: int | None = None,
                           scheduled: bool = False) -> str:
-    sources = config["sources"]
-    categories = config["categories"]
+    all_categories = config["categories"]
 
     if lookahead_days is not None:
         config = {**config, "schedule": {**config["schedule"], "lookahead_days": lookahead_days}}
 
-    if not categories:
+    if not all_categories:
         return "No categories configured. Add some via /addcategory."
 
-    if category_filter:
-        categories = [c for c in categories
-                      if (c["name"] if isinstance(c, dict) else c) == category_filter]
-        if not categories:
-            return format_report({}, config)
+    use_defaults = category_filter is None
+    groups = config.get("category_groups", {})
+    default_group_name = config.get("default_group", "default")
+    categories = _filter_categories(all_categories, category_filter, use_defaults,
+                                    groups, default_group_name)
+    if not categories:
+        return format_report({}, config)
+
+    active_cat_names = {_get_category_name(c) for c in categories}
+    sources = _filter_sources(config["sources"], active_cat_names)
 
     if not sources:
-        return "No sources configured. Add some via /addsource."
+        return "No sources configured for these categories."
 
     semaphore = asyncio.Semaphore(config["scraping"]["max_concurrent_requests"])
 
