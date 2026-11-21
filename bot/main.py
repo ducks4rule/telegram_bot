@@ -7,7 +7,6 @@ from bot.logger import setup_logging
 from bot.schedule import get_run_time
 from bot.handlers import (
     cmd_start, cmd_report, cmd_sources, cmd_categories,
-    cmd_addsource, cmd_addcategory, cmd_removesource, cmd_removecategory,
     scheduled_report,
 )
 
@@ -25,10 +24,6 @@ def main():
     app.add_handler(CommandHandler("report", cmd_report))
     app.add_handler(CommandHandler("sources", cmd_sources))
     app.add_handler(CommandHandler("categories", cmd_categories))
-    app.add_handler(CommandHandler("addsource", cmd_addsource))
-    app.add_handler(CommandHandler("addcategory", cmd_addcategory))
-    app.add_handler(CommandHandler("removesource", cmd_removesource))
-    app.add_handler(CommandHandler("removecategory", cmd_removecategory))
 
     run_time = get_run_time(config)
     app.job_queue.run_daily(

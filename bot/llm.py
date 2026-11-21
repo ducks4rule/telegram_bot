@@ -10,7 +10,7 @@ def _build_category_text(categories: list) -> str:
     lines = []
     for cat in categories:
         if isinstance(cat, dict):
-            lines.append(f"- {cat['name']}: {cat.get('description', '')}")
+            lines.append(f"- {cat['name']}: {cat.get('description') or ''}")
         else:
             lines.append(f"- {cat}")
     return "\n".join(lines)
@@ -87,7 +87,7 @@ async def _call_anthropic(prompt: str, config: dict) -> str | None:
     client = anthropic.AsyncAnthropic(**kwargs)
     response = await client.messages.create(
         model=llm["model"],
-        max_tokens=4096,
+        max_tokens=llm["max_tokens"],
         messages=[{"role": "user", "content": prompt}],
     )
 

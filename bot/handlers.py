@@ -219,7 +219,7 @@ async def cmd_categories(update: Update, context: ContextTypes.DEFAULT_TYPE, con
     lines = ["*Configured categories:*"]
     for c in categories:
         if isinstance(c, dict):
-            lines.append(f"  • *{c['name']}*: {c.get('description', '')}")
+            lines.append(f"  • *{c['name']}*: {c.get('description') or ''}")
         else:
             lines.append(f"  • {c}")
     await _send_message(update.message.reply_text, "\n".join(lines))
@@ -234,115 +234,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE, config: 
         "/report month — report for the next month\n"
         "/report <category> — filter by category\n"
         "/report <category> month — combine both\n\n"
-        "*Config*\n"
+        "*Info*\n"
         "/sources — list sources\n"
-        "/categories — list categories\n"
-        "/addsource <name> <url> [aggregator]\n"
-        "/addcategory <name> <description>\n"
-        "/removesource <name>\n"
-        "/removecategory <name>",
+        "/categories — list categories",
         parse_mode="Markdown",
     )
-
-
-@_authorized
-async def cmd_addsource(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
-    args = context.args
-    if not args or len(args) < 2:
-        await update.message.reply_text(
-            "Usage: /addsource <name> <url> [aggregator]\n"
-            "Example: /addsource Local Cinema https://cinema.at/programm aggregator"
-        )
-        return
-
-    text = " ".join(args)
-    source_type = "single"
-    if text.rstrip().endswith(" aggregator"):
-        source_type = "aggregator"
-        text = text.rsplit(" aggregator", 1)[0]
-
-    parts = text.rsplit(" ", 1)
-    if len(parts) != 2 or not parts[1].startswith("http"):
-        await update.message.reply_text("Could not parse. Put the URL last:\n/addsource My Source https://example.com")
-        return
-
-    name, url = parts[0], parts[1]
-
-    for s in config["sources"]:
-        if s["url"] == url:
-            await update.message.reply_text(f"Source with URL {url} already exists.")
-            return
-
-    source = {"name": name, "url": url}
-    if source_type == "aggregator":
-        source["type"] = "aggregator"
-
-    config["sources"].append(source)
-    save_config(config)
-    await update.message.reply_text(f"Added: {name} ({url}) [{source_type}]")
-
-
-@_authorized
-async def cmd_addcategory(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
-    if not context.args:
-        await update.message.reply_text(
-            "Usage: /addcategory <name> <description>\n"
-            "Example: /addcategory music Jazz, electronic, and experimental music"
-        )
-        return
-
-    name = context.args[0]
-    description = " ".join(context.args[1:]) if len(context.args) > 1 else ""
-
-    for c in config["categories"]:
-        cat_name = c["name"] if isinstance(c, dict) else c
-        if cat_name == name:
-            await update.message.reply_text(f"Category '{name}' already exists.")
-            return
-
-    category = {"name": name, "description": description} if description else name
-    config["categories"].append(category)
-    save_config(config)
-    await update.message.reply_text(f"Added category: {name}" + (f"\n{description}" if description else ""))
-
-
-@_authorized
-async def cmd_removesource(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
-    if not context.args:
-        await update.message.reply_text("Usage: /removesource <name>")
-        return
-
-    name = " ".join(context.args)
-    original_len = len(config["sources"])
-    config["sources"] = [s for s in config["sources"] if s["name"] != name]
-
-    if len(config["sources"]) == original_len:
-        await update.message.reply_text(f"Source '{name}' not found.")
-        return
-
-    save_config(config)
-    await update.message.reply_text(f"Removed source: {name}")
-
-
-@_authorized
-async def cmd_removecategory(update: Update, context: ContextTypes.DEFAULT_TYPE, config: dict) -> None:
-    if not context.args:
-        await update.message.reply_text("Usage: /removecategory <name>")
-        return
-
-    name = " ".join(context.args)
-    original_len = len(config["categories"])
-    config["categories"] = [
-        c for c in config["categories"]
-        if (c["name"] if isinstance(c, dict) else c) != name
-    ]
-
-    if len(config["categories"]) == original_len:
-        await update.message.reply_text(f"Category '{name}' not found.")
-        return
-
-    save_config(config)
-    await update.message.reply_text(f"Removed category: {name}")
 
 
 # --- Scheduled handler (no decorator, no update object) ---

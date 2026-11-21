@@ -37,13 +37,13 @@ def _deduplicate(items: list[dict]) -> list[dict]:
     seen = set()
     unique = []
     for item in items:
-        title = _normalize_title(item.get("title", ""))
-        date = item.get("date", "").strip()[:10]
-        venue = item.get("venue", "").lower().split(",")[0].split("/")[0].strip()
+        title = _normalize_title(item.get("title") or "")
+        date = (item.get("date") or "").strip()[:10]
+        venue = (item.get("venue") or "").lower().split(",")[0].split("/")[0].strip()
         key = (date, venue)
         if key and key in seen and title:
-            already = [_normalize_title(u.get("title", "")) for u in unique
-                       if u.get("date", "").strip()[:10] == date]
+            already = [_normalize_title(u.get("title") or "") for u in unique
+                       if (u.get("date") or "").strip()[:10] == date]
             if any(_titles_match(title, existing) for existing in already):
                 continue
         seen.add(key)
@@ -78,7 +78,7 @@ def _group_by_category(results: dict[str, list[dict]], sources: list) -> dict[st
 
     for cat in by_cat:
         by_cat[cat] = _deduplicate(by_cat[cat])
-        by_cat[cat].sort(key=lambda item: item.get("date", "9999"))
+        by_cat[cat].sort(key=lambda item: item.get("date") or "9999")
 
     return by_cat
 
@@ -115,8 +115,8 @@ def format_report(results: dict[str, list[dict]], config: dict, scheduled: bool 
 
         grouped = {}
         for item in items:
-            date = item.get("date", "?")
-            venue = item.get("venue", "")
+            date = item.get("date") or "?"
+            venue = item.get("venue") or ""
             key = (date, venue)
             grouped.setdefault(key, []).append(item)
 
@@ -125,10 +125,10 @@ def format_report(results: dict[str, list[dict]], config: dict, scheduled: bool 
             lines.append(f"  *{date}{venue_tag}*")
 
             for item in group:
-                item_title = item.get("title", "Untitled")
-                item_desc = item.get("description", "")
+                item_title = item.get("title") or "Untitled"
+                item_desc = item.get("description") or ""
                 item_url = item.get("url")
-                item_source = item.get("_source", "")
+                item_source = item.get("_source") or ""
 
                 safe_title = _escape_md(item_title)
                 title_text = f"[{safe_title}]({item_url})" if item_url else safe_title
