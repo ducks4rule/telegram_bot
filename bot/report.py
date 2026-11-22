@@ -1,4 +1,12 @@
+from datetime import date, datetime
+
+from datetime import datetime
+
 from bot.schedule import next_week_range
+
+WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 EMOJIS = [
     "🔥", "🪢", "⛓", "🤘", "🎧", "🎶", "🎬", "💻",
@@ -23,6 +31,15 @@ def _get_emoji(category: str, categories: list) -> str:
             if idx is not None and 0 <= idx < len(EMOJIS):
                 return EMOJIS[idx]
     return "•"
+
+
+def _format_date(date_str: str) -> str:
+    try:
+        d = datetime.strptime(date_str[:10], "%Y-%m-%d").date()
+        weekday = WEEKDAYS[d.weekday()]
+        return f"{weekday} {d.strftime('%d.%m.%Y')}"
+    except (ValueError, IndexError):
+        return date_str
 
 
 def _normalize_title(title: str) -> str:
@@ -120,9 +137,10 @@ def format_report(results: dict[str, list[dict]], config: dict, scheduled: bool 
             key = (date, venue)
             grouped.setdefault(key, []).append(item)
 
-        for (date, venue), group in grouped.items():
+        for (raw_date, venue), group in grouped.items():
+            formatted_date = _format_date(raw_date)
             venue_tag = f" @ {_escape_md(venue)}" if venue else ""
-            lines.append(f"  *{date}{venue_tag}*")
+            lines.append(f"  *{formatted_date}{venue_tag}*")
 
             for item in group:
                 item_title = item.get("title") or "Untitled"
@@ -132,7 +150,7 @@ def format_report(results: dict[str, list[dict]], config: dict, scheduled: bool 
 
                 safe_title = _escape_md(item_title)
                 title_text = f"[{safe_title}]({item_url})" if item_url else safe_title
-                source_tag = f" — {_escape_md(item_source)}" if item_source else ""
+                source_tag = f" ({_escape_md(item_source)})" if item_source else ""
 
                 lines.append(f"    {title_text}{source_tag}")
                 if item_desc:
