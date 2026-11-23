@@ -5,7 +5,7 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from bot.config import CONSTANTS, load_config, save_config
+from bot.config import CONSTANTS, load_config
 from bot.scraper import fetch_and_extract
 from bot.llm import analyze_source
 from bot.report import format_report
@@ -137,7 +137,7 @@ async def generate_report(config: dict, category_filter: str | None = None,
         config = {**config, "schedule": {**config["schedule"], "lookahead_days": lookahead_days}}
 
     if not all_categories:
-        return "No categories configured. Add some via /addcategory."
+        return "No categories configured. Add some to config.yaml."
 
     use_defaults = category_filter is None
     groups = config.get("category_groups", {})

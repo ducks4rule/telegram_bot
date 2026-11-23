@@ -59,10 +59,10 @@ Content:
 
 async def _call_gemini(prompt: str, config: dict) -> str | None:
     from google import genai
+    from google.genai import types
 
     llm = config["llm"]
     client = genai.Client(api_key=llm["gemini_api_key"])
-    from google.genai import types
     response = await client.aio.models.generate_content(
         model=llm["model"], contents=prompt,
         config=types.GenerateContentConfig(temperature=0),
@@ -133,10 +133,10 @@ async def analyze_source(source_name: str, text: str, categories: list,
             raw = raw.strip()
         # Try to find JSON array in the response
         if not raw.startswith("["):
-            start = raw.find("[")
-            end = raw.rfind("]")
-            if start != -1 and end != -1:
-                raw = raw[start:end + 1]
+            arr_start = raw.find("[")
+            arr_end = raw.rfind("]")
+            if arr_start != -1 and arr_end != -1:
+                raw = raw[arr_start:arr_end + 1]
         items = json.loads(raw)
         if not isinstance(items, list):
             return []

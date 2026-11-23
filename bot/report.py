@@ -1,10 +1,6 @@
-from datetime import date, datetime
-
 from datetime import datetime
 
 from bot.schedule import next_week_range
-
-WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -50,24 +46,6 @@ def _normalize_title(title: str) -> str:
     return " ".join(words)
 
 
-def _deduplicate(items: list[dict]) -> list[dict]:
-    seen = set()
-    unique = []
-    for item in items:
-        title = _normalize_title(item.get("title") or "")
-        date = (item.get("date") or "").strip()[:10]
-        venue = (item.get("venue") or "").lower().split(",")[0].split("/")[0].strip()
-        key = (date, venue)
-        if key and key in seen and title:
-            already = [_normalize_title(u.get("title") or "") for u in unique
-                       if (u.get("date") or "").strip()[:10] == date]
-            if any(_titles_match(title, existing) for existing in already):
-                continue
-        seen.add(key)
-        unique.append(item)
-    return unique
-
-
 def _titles_match(a: str, b: str) -> bool:
     words_a = set(a.split())
     words_b = set(b.split())
@@ -76,6 +54,24 @@ def _titles_match(a: str, b: str) -> bool:
     overlap = words_a & words_b
     smaller = min(len(words_a), len(words_b))
     return len(overlap) >= max(1, smaller * 0.5)
+
+
+def _deduplicate(items: list[dict]) -> list[dict]:
+    seen = set()
+    unique = []
+    for item in items:
+        title = _normalize_title(item.get("title") or "")
+        item_date = (item.get("date") or "").strip()[:10]
+        venue = (item.get("venue") or "").lower().split(",")[0].split("/")[0].strip()
+        key = (item_date, venue)
+        if key and key in seen and title:
+            already = [_normalize_title(u.get("title") or "") for u in unique
+                       if (u.get("date") or "").strip()[:10] == item_date]
+            if any(_titles_match(title, existing) for existing in already):
+                continue
+        seen.add(key)
+        unique.append(item)
+    return unique
 
 
 def _group_by_category(results: dict[str, list[dict]], sources: list) -> dict[str, list[dict]]:
@@ -111,13 +107,13 @@ def _period_label(days: int) -> str:
 def format_report(results: dict[str, list[dict]], config: dict, scheduled: bool = False) -> str:
     schedule = config["schedule"]
     categories = config["categories"]
-    start, end = next_week_range(schedule["timezone"], schedule["lookahead_days"])
+    range_start, range_end = next_week_range(schedule["timezone"], schedule["lookahead_days"])
 
     period = _period_label(schedule["lookahead_days"])
     heading = "Weekly Report" if scheduled else f"Report for {period}"
 
     lines = [f"*{heading}*"]
-    lines.append(f"_{start.strftime('%d.%m.')} — {end.strftime('%d.%m.%Y')}_\n")
+    lines.append(f"_{range_start.strftime('%d.%m.')} — {range_end.strftime('%d.%m.%Y')}_\n")
 
     by_cat = _group_by_category(results, config.get("sources", []))
 
@@ -132,9 +128,9 @@ def format_report(results: dict[str, list[dict]], config: dict, scheduled: bool 
 
         grouped = {}
         for item in items:
-            date = item.get("date") or "?"
+            item_date = item.get("date") or "?"
             venue = item.get("venue") or ""
-            key = (date, venue)
+            key = (item_date, venue)
             grouped.setdefault(key, []).append(item)
 
         for (raw_date, venue), group in grouped.items():
