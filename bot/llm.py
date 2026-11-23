@@ -90,7 +90,6 @@ async def _call_anthropic(prompt: str, config: dict) -> str | None:
     response = await client.messages.create(
         model=llm["model"],
         max_tokens=llm["max_tokens"],
-        temperature=0,
         messages=[{"role": "user", "content": prompt}],
     )
 
