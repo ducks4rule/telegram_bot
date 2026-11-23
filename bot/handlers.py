@@ -163,6 +163,10 @@ async def generate_report(config: dict, category_filter: str | None = None,
     pairs = await asyncio.gather(*tasks)
     results = {name: items for name, items in pairs}
 
+    found = {name: len(items) for name, items in results.items() if items}
+    empty = [name for name, items in results.items() if not items]
+    logger.info("Results: %s | Empty: %s", found, empty)
+
     return format_report(results, config, scheduled=scheduled)
 
 

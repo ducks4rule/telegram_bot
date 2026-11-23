@@ -62,8 +62,10 @@ async def _call_gemini(prompt: str, config: dict) -> str | None:
 
     llm = config["llm"]
     client = genai.Client(api_key=llm["gemini_api_key"])
+    from google.genai import types
     response = await client.aio.models.generate_content(
         model=llm["model"], contents=prompt,
+        config=types.GenerateContentConfig(temperature=0),
     )
 
     usage = response.usage_metadata
@@ -88,6 +90,7 @@ async def _call_anthropic(prompt: str, config: dict) -> str | None:
     response = await client.messages.create(
         model=llm["model"],
         max_tokens=llm["max_tokens"],
+        temperature=0,
         messages=[{"role": "user", "content": prompt}],
     )
 
