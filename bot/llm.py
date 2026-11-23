@@ -130,10 +130,17 @@ async def analyze_source(source_name: str, text: str, categories: list,
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1]
             raw = raw.rsplit("```", 1)[0]
+            raw = raw.strip()
+        # Try to find JSON array in the response
+        if not raw.startswith("["):
+            start = raw.find("[")
+            end = raw.rfind("]")
+            if start != -1 and end != -1:
+                raw = raw[start:end + 1]
         items = json.loads(raw)
         if not isinstance(items, list):
             return []
         return items
     except (json.JSONDecodeError, IndexError):
-        logger.warning("Failed to parse LLM response for %s", source_name)
+        logger.warning("Failed to parse LLM response for %s: %.200s", source_name, raw_text)
         return []
