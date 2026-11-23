@@ -1,0 +1,6 @@
+# Rules passed to the LLM prompt. Copy to prompt_rules.yaml and customize.
+rules:
+  - "Only include items that genuinely fit the category descriptions. Be very selective — quality over quantity."
+  - "EXCLUDE workshops, courses, or seminars unless they clearly fit a category description."
+  - "EXCLUDE sold out events (marked as ausverkauft, sold out, vergangen, or similar)."
+  - "If unsure whether something fits, leave it out."

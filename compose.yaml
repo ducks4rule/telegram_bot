@@ -8,3 +8,4 @@ services:
     env_file: .env
     volumes:
       - ./config.yaml:/app/config.yaml
+      - ./prompt_rules.yaml:/app/prompt_rules.yaml:ro

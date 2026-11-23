@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 
 CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
+PROMPT_RULES_PATH = Path(__file__).parent.parent / "prompt_rules.yaml"
 
 CONSTANTS = {
     "http_timeout": 30,
@@ -82,6 +83,8 @@ def load_config(path: Path = CONFIG_PATH) -> dict:
     else:
         config["llm"]["provider"] = "gemini"
 
+    config["prompt_rules"] = _load_prompt_rules()
+
     _validate(config)
 
     day_name = config["schedule"]["day"].lower()
@@ -90,6 +93,14 @@ def load_config(path: Path = CONFIG_PATH) -> dict:
     config["schedule"]["day_of_week"] = DAY_MAP[day_name]
 
     return config
+
+
+def _load_prompt_rules() -> list:
+    if PROMPT_RULES_PATH.exists():
+        with open(PROMPT_RULES_PATH) as f:
+            data = yaml.safe_load(f) or {}
+        return data.get("rules", [])
+    return []
 
 
 def save_config(config: dict, path: Path = CONFIG_PATH) -> None:

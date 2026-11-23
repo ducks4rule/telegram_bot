@@ -17,7 +17,8 @@ def _build_category_text(categories: list) -> str:
 
 
 def build_prompt(source_name: str, text: str, categories: list,
-                 start: str, end: str, extract_urls: bool = False) -> str:
+                 start: str, end: str, extract_urls: bool = False,
+                 rules: list | None = None) -> str:
     cat_text = _build_category_text(categories)
 
     fields = [
@@ -31,6 +32,7 @@ def build_prompt(source_name: str, text: str, categories: list,
         fields.append('- "url": direct link to the event page if available, otherwise null')
 
     fields_text = "\n".join(fields)
+    rules_text = "\n".join(f"- {r}" for r in (rules or []))
 
     return f"""You are analyzing content from "{source_name}" to find events or items happening between {start} and {end}.
 
@@ -42,10 +44,7 @@ Extract any events, screenings, meetups, concerts, or other items that:
 2. Match at least one of the categories above based on their description
 
 STRICT RULES:
-- Only include items that genuinely fit the category descriptions. Be very selective — quality over quantity.
-- EXCLUDE any events that are restricted to FLINTA*, women-only, lesbian-only, or any gender-restricted audience.
-- EXCLUDE workshops, courses, or seminars unless they clearly fit a category description.
-- If unsure whether something fits, leave it out.
+{rules_text}
 
 Return a JSON array of objects with these fields:
 {fields_text}
@@ -108,10 +107,11 @@ PROVIDERS = {
 async def analyze_source(source_name: str, text: str, categories: list,
                          config: dict, extract_urls: bool = False) -> list[dict]:
     schedule = config["schedule"]
-    start, end = next_week_range(schedule["timezone"], schedule["lookahead_days"])
+    range_start, range_end = next_week_range(schedule["timezone"], schedule["lookahead_days"])
+    rules = config.get("prompt_rules", [])
     prompt = build_prompt(source_name, text, categories,
-                          start.isoformat(), end.isoformat(),
-                          extract_urls=extract_urls)
+                          range_start.isoformat(), range_end.isoformat(),
+                          extract_urls=extract_urls, rules=rules)
 
     provider = config["llm"]["provider"]
     call_fn = PROVIDERS.get(provider)
